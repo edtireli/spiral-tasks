@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+qa/*.png
+qa/*.jpg
+qa/*.gif
+qa/*.webm
+qa/*reference*
+qa/frames/
