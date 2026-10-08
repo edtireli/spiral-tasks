@@ -7,7 +7,7 @@ A small, local task list built from the visual language of Spiral Chat and the S
 - Add and edit tasks inline. Highlight what matters.
 - Branch tasks into smaller steps; fold branches away.
 - Drag to reorder. Drag right over a task to nest it. Keyboard and touch work too.
-- Completed tasks settle below the active list. Clear or delete, then undo.
+- Checked subtasks stay in place until their top-level task is complete; the whole tree then settles below the active list. Clear or delete, then undo.
 - True black, warm grey, slate, moss, and paper backgrounds; seven highlight colors.
 - Spiral’s animated interference field, with warped completion waves and bloom transitions. Reduced motion is respected.
 
@@ -30,11 +30,11 @@ Click a title to edit. Use the row’s marker to highlight it, its branch button
 
 `N` focuses the new-task input. `Cmd/Ctrl Z` undoes a list change outside a text input. Focus a task control and use `Alt ↑/↓` to move it, `Alt →` to branch under its previous sibling, or `Alt ←` to unbranch it. `Cmd/Ctrl K` opens shortcuts.
 
-Completing a parent completes its descendants; reopening a child reopens its ancestors. Deleting a parent deletes its subtree. These operations and clearing the list are undoable during the current page session.
+Completing a parent completes its descendants; reopening a child reopens its ancestors. Checked subtasks remain under their parent, even when all its steps are checked, until the parent itself is completed. Completed trees keep their structure. Clear completed removes only trees in the completed section, preserving checked steps in unfinished tasks. Deleting a parent deletes its subtree. These operations and clearing the list are undoable during the current page session.
 
 ## Design provenance
 
-The field is adapted directly from Edis Tireli’s [Spiral presentation engine](https://github.com/edtireli/presentation), `engine/js/field.js`, also maintained in the original `spiralengine` project. It preserves the twelve-wave interference pattern, fixed seed, brightness buckets, swelling front, warped arrival maps, color-draining wake, and gradual return. The task-list adapter controls lifecycle and interaction origins, adds accent tinting, and respects reduced motion. A height-only resize fix and interrupted-transition cleanup are included in the port.
+The field is adapted directly from Edis Tireli’s [Spiral presentation engine](https://github.com/edtireli/presentation), `engine/js/field.js`, also maintained in the original `spiralengine` project. It preserves the twelve-wave interference pattern, fixed seed, brightness buckets, swelling front, warped arrival maps, color-draining wake, and gradual return. The task-list adapter controls lifecycle and interaction origins, adds accent tinting, and respects reduced motion. A GPU point renderer evaluates the same wave equations and palette in one draw at 60 Hz. The original Canvas renderer remains a 30 Hz fallback when WebGL is unavailable or its context is lost. Grid geometry is cached, text measurements are batched, and nested row transitions account for their parent motion. Height-only resizing and interrupted transitions are handled.
 
 Typography, continuous marker strokes, and resolving text follow the presentation’s `clinical-synthesis.css` / typed statements and [Spiral Chat](https://github.com/edtireli/spiralChat)’s `Theme.kt`, `Decode.kt`, and animated banner/feature references. The unrelated translation mockups are not used.
 

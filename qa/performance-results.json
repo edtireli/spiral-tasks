@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-08",
+  "browser": "Codex in-app browser",
+  "viewport": [
+    1265,
+    850
+  ],
+  "scenario": "Example list, true black, animated background; complete a parent and undo during a 6.4-second sample after warmup. Timings are observations on this machine, not an FPS guarantee.",
+  "baseline": {
+    "renderer": "Canvas2D",
+    "fieldWorkP95Ms": 2.4,
+    "fieldWorkMaxMs": 4.1,
+    "displayIntervalP95Ms": 11,
+    "displayIntervalMaxMs": 109.9,
+    "intervalsOver34Ms": 14,
+    "intervalsOver50Ms": 9
+  },
+  "optimized": {
+    "renderer": "WebGL",
+    "fieldWorkP95Ms": 0.1,
+    "fieldWorkMaxMs": 0.2,
+    "displayIntervalP95Ms": 20.9,
+    "displayIntervalMaxMs": 21.1,
+    "intervalsOver34Ms": 0,
+    "intervalsOver50Ms": 0
+  },
+  "visualComparison": {
+    "ambientMeanChannelError": 0.348,
+    "tintedMeanChannelError": 0.419,
+    "transitionMeanChannelError": 0.55,
+    "range": "0\u2013255",
+    "fallbackResizeTransitionAndContextLoss": "passed"
+  }
+}

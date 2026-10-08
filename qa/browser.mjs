@@ -16,7 +16,7 @@ await p.getByRole('button',{name:'Edit Write a real task',exact:true}).click();a
 let first=(await read()).tasks[0].id;
 await p.locator(`[data-id="${first}"] .task-row`).hover();await p.locator(`[data-id="${first}"] [data-action=branch]`).click();await p.getByRole('textbox',{name:'New branch',exact:true}).fill('Child task');await p.getByRole('textbox',{name:'New branch',exact:true}).press('Enter');check('Branch task',(await read()).tasks.find(t=>t.text==='Child task').parent===first);
 await p.locator(`[data-id="${first}"] > .task-row`).hover();await p.locator(`[data-id="${first}"] > .task-row [data-action=highlight]`).click();check('Highlight task',(await read()).tasks[0].important);
-await p.getByRole('checkbox',{name:'Complete Child task',exact:true}).click();check('Completed child moves to bottom',await p.locator('#done-tasks').getByRole('checkbox',{name:'Reopen Child task',exact:true}).count()===1);
+await p.getByRole('checkbox',{name:'Complete Child task',exact:true}).click();check('Completed child stays checked under its parent',await p.locator(`#tasks [data-id="${first}"] .children`).getByRole('checkbox',{name:'Reopen Child task',exact:true}).count()===1&&await p.locator('#done-tasks .task').count()===0);
 await p.getByRole('button',{name:'Undo',exact:true}).first().click();check('Undo completion',!(await read()).tasks.find(t=>t.text==='Child task').done);
 await p.getByRole('checkbox',{name:'Complete Revised task',exact:true}).click();check('Completing parent completes branches',(await read()).tasks.filter(t=>t.parent===first||t.id===first).every(t=>t.done));
 await p.getByRole('checkbox',{name:'Reopen Child task',exact:true}).click();check('Reopening child reopens parent',!(await read()).tasks.find(t=>t.id===first).done);
@@ -37,9 +37,28 @@ await p.getByRole('button',{name:'More options',exact:true}).click();await p.get
 const p2=await context.newPage();await p2.goto(origin);await add('Synced from another tab');await p2.getByRole('button',{name:'Edit Synced from another tab',exact:true}).waitFor();check('Other tabs receive changes');await p2.close();
 for(const width of [320,390,768,1440]){await p.setViewportSize({width,height:900});await p.goto(origin+'?example=1');check(`No horizontal overflow at ${width}px`,await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await p.getByRole('button',{name:'Appearance',exact:true}).click();check(`Appearance fits at ${width}px`,await p.locator('dialog[open]').evaluate(el=>{const b=el.getBoundingClientRect();return b.x>=0&&b.right<=innerWidth}));await p.getByRole('button',{name:'Close appearance',exact:true}).click()}
 await p.setViewportSize({width:1440,height:1000});await p.emulateMedia({reducedMotion:'no-preference'});await p.goto(origin+'?example=1&theme=black');await p.waitForTimeout(3000);await p.screenshot({path:'qa/after-hours.png',fullPage:true});
-const before=await p.locator('#field').evaluate(c=>c.toDataURL());await p.waitForTimeout(180);const after=await p.locator('#field').evaluate(c=>c.toDataURL());check('Actual background continuously moves',before!==after);
-await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>document.body.dataset.motion==='off');const frozen=await p.locator('#field').evaluate(c=>c.toDataURL());await p.waitForTimeout(180);check('Reduced motion freezes field',frozen===await p.locator('#field').evaluate(c=>c.toDataURL()));
+const before=await p.screenshot();await p.waitForTimeout(180);const after=await p.screenshot();check('Actual background continuously moves',!before.equals(after));
+await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>document.body.dataset.motion==='off');const frozen=await p.screenshot();await p.waitForTimeout(180);check('Reduced motion freezes field',frozen.equals(await p.screenshot()));
 await p.goto(origin+'?example=1&theme=clay');await p.screenshot({path:'qa/clay.png',fullPage:true});await p.goto(origin+'?example=1&theme=paper');await p.screenshot({path:'qa/paper.png',fullPage:true});await p.setViewportSize({width:390,height:844});await p.goto(origin+'?example=1&theme=black');await p.screenshot({path:'qa/mobile.png',fullPage:true});
+// Checked subtasks stay in their tree; only whole finished trees can be cleared.
+const gc=await browser.newContext({reducedMotion:'reduce'});const gp=await gc.newPage();await gp.goto(origin+'?example=1&theme=black');
+await gp.getByRole('checkbox',{name:'Complete Collect the things that spark something',exact:true}).click();
+check('Checked step retains its original position',await gp.locator('#tasks [data-id="a"] > .children > .task').evaluateAll(els=>els.map(e=>e.dataset.id).join(','))==='a1,a2');
+check('Done section excludes checked steps in unfinished tasks',await gp.locator('#done-tasks .task').count()===1&&await gp.locator('#done-count').innerText()==='01');
+check('Progress counts checked steps in unfinished tasks',await gp.locator('#progress').innerText()==='3 / 8');
+await gp.locator('#clear-done').click();
+check('Clear completed preserves checked steps',await gp.locator('#tasks .task.done').count()===2&&await gp.locator('#done-tasks .task').count()===0);
+await gp.locator('#undo').click();check('Undo clear restores completed trees',await gp.locator('#done-tasks [data-id="d"]').count()===1);
+await gp.getByRole('checkbox',{name:'Complete Make a small, imperfect first version',exact:true}).click();
+check('Last checked step waits for parent completion',await gp.locator('#tasks [data-id="a"] > .children > .task.done').count()===2&&await gp.locator('#done-tasks [data-id="a"]').count()===0);
+await gp.getByRole('checkbox',{name:'Complete Give the next idea some room',exact:true}).click();
+check('Whole finished tree moves together',await gp.locator('#done-tasks [data-id="a"] > .children > .task.done').count()===2&&await gp.locator('#tasks [data-id="a"]').count()===0);
+await gp.getByRole('button',{name:'Collapse branches of Give the next idea some room',exact:true}).click();
+check('Completed tree can collapse',await gp.locator('#done-tasks [data-id="a"] .children').count()===0);
+await gp.getByRole('button',{name:'Expand branches of Give the next idea some room',exact:true}).click();
+await gp.getByRole('checkbox',{name:'Reopen Collect the things that spark something',exact:true}).click();
+check('Reopening a step brings back the whole tree',await gp.locator('#tasks [data-id="a"] > .children > .task').count()===2&&await gp.locator('#tasks [data-id="a2"].done').count()===1&&await gp.locator('#done-tasks [data-id="a"]').count()===0);
+await gc.close();
 // Real touch events exercise drag handles, not HTML drag-and-drop.
 const touchContext=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});const tp=await touchContext.newPage();await tp.goto(origin);for(const text of ['Touch one','Touch two']){await tp.locator('#new-task').fill(text);await tp.locator('#new-task').press('Enter')}
 const t=await tp.evaluate(()=>JSON.parse(localStorage.getItem('spiral-tasks:v1')).tasks);a=await tp.locator(`[data-id="${t[1].id}"] .drag-handle`).boundingBox();b=await tp.locator(`[data-id="${t[0].id}"] .task-row`).boundingBox();const cdp=await touchContext.newCDPSession(tp);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:a.x+a.width/2,y:a.y+a.height/2}]});for(let i=1;i<=8;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:a.x+a.width/2+(b.x+8-a.x-a.width/2)*i/8,y:a.y+a.height/2+(b.y+4-a.y-a.height/2)*i/8}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});check('Touch drag reorders tasks',await tp.evaluate(id=>JSON.parse(localStorage.getItem('spiral-tasks:v1')).tasks[0].id===id,t[1].id));await touchContext.close();

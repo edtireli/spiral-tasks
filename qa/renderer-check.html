@@ -1,0 +1,39 @@
+<!doctype html><meta charset="utf-8"><title>Field renderer checks</title>
+<style>:root{--page:#000}body{background:#111;color:#ddd;font:14px monospace}canvas{width:480px;height:320px;margin:8px}pre{white-space:pre-wrap}</style>
+<canvas id="gpu"></canvas><canvas id="fallback"></canvas><pre id="results">Running…</pre>
+<script type="module">
+import {Field} from '../engine-field.js';
+const checks=[];
+const check=(name,ok,details)=>{checks.push({name,pass:!!ok,...(details?{details}:{})});if(!ok)throw Error(name)};
+try{
+ const gpu=new Field(document.querySelector('#gpu'),{gap:18});
+ const fallback=new Field(document.querySelector('#fallback'),{gap:18,renderer:'canvas'});
+ check('GPU path initializes',!!gpu.gpu);
+ check('Canvas fallback initializes',!!fallback.g&&!fallback.gpu);
+ gpu.background=fallback.background='#000000';
+ const originalNow=performance.now.bind(performance);const fixed=originalNow();
+ Object.defineProperty(performance,'now',{value:()=>fixed,configurable:true});
+ gpu.t0=fallback.t0=fixed-3200;
+ function compare(label){
+  gpu.frame();fallback.frame();
+  const gl=gpu.c.getContext('webgl');const a=new Uint8Array(gpu.c.width*gpu.c.height*4);gl.readPixels(0,0,gpu.c.width,gpu.c.height,gl.RGBA,gl.UNSIGNED_BYTE,a);
+  const b=fallback.g.getImageData(0,0,fallback.c.width,fallback.c.height).data;
+  let total=0,error=0,bright=0;const w=gpu.c.width,h=gpu.c.height;
+  // The equation and color should match; antialiased circle edges may differ.
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)for(let c=0;c<3;c++){const av=a[((h-1-y)*w+x)*4+c],bv=b[(y*w+x)*4+c];error+=Math.abs(av-bv);total++;if(av>15)bright++}
+  const mae=error/total;check(label,mae<3&&bright>500,{meanAbsoluteChannelError:+mae.toFixed(3),brightSamples:bright});
+ }
+ compare('Ambient GPU image matches reference');
+ gpu.tint=fallback.tint=[146,228,241];compare('Tint matches reference');
+ gpu.tint=fallback.tint=null;gpu.buildArrivals('wipe',.4,.5);fallback.arrivals=gpu.arrivals;fallback.frontEase=gpu.frontEase;
+ gpu.frontV=fallback.frontV=0;gpu.ms=fallback.ms=2000;gpu.startedAt=fallback.startedAt=fixed-950;
+ compare('Transition wave matches reference');
+ delete performance.now;
+ gpu.c.style.height='410px';fallback.c.style.height='410px';gpu.resize();fallback.resize();gpu.frame();fallback.frame();
+ check('Height-only resize rebuilds both grids',gpu.rows===fallback.rows&&gpu.h===410);
+ gpu.start();let finished=false;gpu.run({kind:'bloom',ms:120}).then(()=>finished=true);await new Promise(r=>setTimeout(r,250));check('Wave completes',finished);gpu.stop();
+ const old=gpu.c;const loss=old.getContext('webgl').getExtension('WEBGL_lose_context');
+ if(loss){loss.loseContext();await new Promise(r=>setTimeout(r,100));check('Context loss switches to Canvas',gpu.c!==old&&!gpu.gpu&&gpu.c.dataset.renderer==='canvas');gpu.frame();check('Fallback draws after context loss',gpu.g.getImageData(0,0,1,1).data[3]===255)}
+ document.querySelector('#results').textContent=JSON.stringify({status:'passed',checks},null,2);
+}catch(error){document.querySelector('#results').textContent=JSON.stringify({status:'failed',error:String(error),checks},null,2)}
+</script>

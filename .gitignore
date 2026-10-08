@@ -6,3 +6,4 @@ qa/*.gif
 qa/*.webm
 qa/*reference*
 qa/frames/
+qa/perf-baseline/

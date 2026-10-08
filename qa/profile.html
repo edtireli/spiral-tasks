@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><title>Spiral performance check</title>
+<style>html,body{margin:0;background:#111;color:#ddd;font:14px monospace}iframe{border:0;width:100%;height:850px}pre{position:fixed;right:8px;top:8px;background:#111e;padding:14px;z-index:99;white-space:pre-wrap;max-width:450px}</style>
+<pre id="result">Sampling…</pre><iframe id="app"></iframe>
+<script type="module">
+const query=new URL(location.href).searchParams;
+const frame=document.querySelector('iframe');
+frame.src=(query.has('baseline')?'./perf-baseline/':'../')+'?example=1&theme=black';
+frame.onload=()=>{const s=frame.contentDocument.createElement('script');s.type='module';s.src=new URL('./perf-probe.js',location.href);frame.contentDocument.head.append(s)};
+addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==frame.contentWindow)return;if(e.data?.type==='profile')document.querySelector('#result').textContent=JSON.stringify(e.data,null,2)});
+</script>

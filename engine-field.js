@@ -1,3 +1,5 @@
+import { createGPURenderer } from './field-gpu.js';
+
 /* The vacuum field — a port of ed.spiral.chat.ui.Theme's VacuumField, constant for constant.
  *
  * Not decoration painted by hand: twelve plane waves with random directions, wavelengths
@@ -170,8 +172,21 @@ const STEPS = 16;   // brightness buckets; each goes out as one batched path
 export class Field {
   constructor(canvas, opts = {}) {
     this.c = canvas;
-    this.g = canvas.getContext("2d", { alpha: false });
     this.modes = vacuumModes();
+    this.gpu = null;
+    this.background = cssVar("--page", "#000000");
+    try { if (opts.renderer !== "canvas") this.gpu = createGPURenderer(canvas, this.modes); }
+    catch { this.c = canvas.cloneNode(false); canvas.replaceWith(this.c); }
+    this.g = this.gpu ? null : this.c.getContext("2d", { alpha: false });
+    this.c.dataset.renderer = this.gpu ? 'webgl' : 'canvas';
+    if (this.gpu) this.c.addEventListener('webglcontextlost', event => {
+      event.preventDefault();
+      const replacement = this.c.cloneNode(false);
+      this.c.replaceWith(replacement); this.c = replacement; this.gpu = null;
+      this.g = replacement.getContext('2d', {alpha:false});
+      replacement.dataset.renderer = 'canvas';
+      this.resize(); this.frame();
+    }, {once:true});
     this.t0 = performance.now();
     this.strength = opts.strength ?? 1;
     this.gapCss = opts.gap ?? 22;   // dot pitch in CSS px — the app's 13dp, opened up for a room
@@ -196,7 +211,7 @@ export class Field {
     this.h = this.c.clientHeight || innerHeight;
     this.c.width = Math.floor(this.w * dpr);
     this.c.height = Math.floor(this.h * dpr);
-    this.g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (this.g) this.g.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.cols = Math.max(2, Math.floor(this.w / this.gapCss));
     this.rows = Math.max(2, Math.floor(this.h / this.gapCss));
     this.ox = (this.w - (this.cols - 1) * this.gapCss) / 2;
@@ -205,6 +220,8 @@ export class Field {
     this.mask.height = this.rows;
     this.maskImg = this.maskG.createImageData(this.cols, this.rows);
     this.arrivals = null;
+    this._gridDirty = true;
+    if (this.gpu) this.gpu.resize(this, dpr);
   }
 
   /* The instantaneous density at a point, which `dissolve` and `bloom` need in order to let
@@ -249,6 +266,7 @@ export class Field {
       for (let i = 0; i < at.length; i++) if (at[i] > mx) mx = at[i];
       if (mx > 0) for (let i = 0; i < at.length; i++) at[i] /= mx;
       this.arrivals = at;
+      this.gpu?.setArrivals(at);
       this.frontEase = fn.ease || null;
       return;
     }
@@ -266,6 +284,7 @@ export class Field {
     const last = order.length - 1 || 1;
     for (let k = 0; k <= last; k++) at[order[k]] = k / last;
     this.arrivals = at;
+    this.gpu?.setArrivals(at);
     this.frontEase = fn.ease || null;
   }
 
@@ -309,7 +328,32 @@ export class Field {
     return { in: this.maskURL(front, false), out: this.maskURL(front, true) };
   }
 
+  advance(now) {
+    const elapsed = Math.min(100, now - (this._lastFrameAt ?? now));
+    this._lastFrameAt = now;
+    let front = this.frontV;
+    if (front >= 0) {
+      front = Math.min(1, (performance.now() - this.startedAt) / this.ms);
+      if (this.frontEase) front = this.frontEase(front);
+      this.wake = 1;
+      if (front >= 1) {
+        this.frontV = -1;
+        if (this._done) { this._done(); this._done = null; }
+      }
+      if (this.onFrame) this.onFrame(front);
+    } else if (this.wake > 0) {
+      // Coming back is NOT the front run backwards — that looked like the shockwave being
+      // sucked in. The wake just eases out, so warmth returns everywhere at once.
+      this.wake = Math.max(0, this.wake - elapsed / 740);
+    }
+
+    return front;
+  }
+
   frame() {
+    const now = performance.now();
+    const front = this.advance(now);
+    if (this.gpu) { this.gpu.draw(this, (now - this.t0) / 1000, front); return; }
     const g = this.g, { w, h, cols, rows, ox, oy, gapCss: gap } = this;
     const t = (performance.now() - this.t0) / 1000;
     const n = this.modes.length;
@@ -324,7 +368,7 @@ export class Field {
     const cxs = this._cxs, sxs = this._sxs, cys = this._cys, sys = this._sys;
     for (let m = 0; m < n; m++) {
       const kx = this.modes[m].kx;
-      for (let c = 0; c < cols; c++) {
+      if (this._gridDirty) for (let c = 0; c < cols; c++) {
         const a = kx * (ox + c * gap) * 0.5;
         cxs[m * cols + c] = Math.cos(a); sxs[m * cols + c] = Math.sin(a);
       }
@@ -335,6 +379,7 @@ export class Field {
       }
     }
 
+    this._gridDirty = false;
     for (const b of this.buckets) b.length = 0;
     for (const b of this.grey) b.length = 0;
 
@@ -342,22 +387,6 @@ export class Field {
     // breathing — without it the field is uniform and reads as a screensaver.
     const swell = (t * 0.16) % 1.8 - 0.4;
     const invW = 1 / w, invH = 1 / h;
-
-    let front = this.frontV;
-    if (front >= 0) {
-      front = Math.min(1, (performance.now() - this.startedAt) / this.ms);
-      if (this.frontEase) front = this.frontEase(front);
-      this.wake = 1;
-      if (front >= 1) {
-        this.frontV = -1;
-        if (this._done) { this._done(); this._done = null; }
-      }
-      if (this.onFrame) this.onFrame(front);
-    } else if (this.wake > 0) {
-      // Coming back is NOT the front run backwards — that looked like the shockwave being
-      // sucked in. The wake just eases out, so warmth returns everywhere at once.
-      this.wake = Math.max(0, this.wake - 0.045);
-    }
 
     const crest = [];
     const hasFront = front >= 0 && this.arrivals;
@@ -389,7 +418,7 @@ export class Field {
       }
     }
 
-    g.fillStyle = cssVar("--page", "#20201F");
+    g.fillStyle = this.background;
     g.fillRect(0, 0, w, h);
 
     // Every radius in the app is a dp measured against a 13dp pitch, so they are carried
@@ -427,8 +456,8 @@ export class Field {
     }
   }
 
-  /* ~30fps by design. The field is a texture, not an animation to be admired frame by
-   * frame, and a projector-driving laptop has better things to do with the other 30. */
+  /* GPU points follow a steady 60 Hz cadence; the compatibility renderer uses 30 Hz.
+   * Carry the remainder across frames instead of drifting against the display clock. */
   colorAt(e) {
     if (!this.tint) return rampAt(e);
     return this.tint.map(c => e < .62 ? c * (.22 + e * 1.26) : c + (250 - c) * ((e - .62) / .38));
@@ -436,11 +465,13 @@ export class Field {
 
   start() {
     this.stop();
-    let last = 0;
+    let last = performance.now();
     const loop = (ms) => {
       this._raf = requestAnimationFrame(loop);
-      if (ms - last < 32) return;
-      last = ms;
+      const interval = this.gpu ? 1000 / 60 : 1000 / 30;
+      const elapsed = ms - last;
+      if (elapsed < interval - .5) return;
+      last = ms - (elapsed >= interval ? elapsed % interval : 0);
       this.frame();
     };
     this._raf = requestAnimationFrame(loop);
