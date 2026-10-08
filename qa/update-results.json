@@ -1,0 +1,30 @@
+{
+  "passed": 24,
+  "results": [
+    "First release loads and reads existing saved tasks",
+    "Changing an imported module creates a different release URL",
+    "Cached release assets remain available",
+    "Old cached HTML opens the latest release",
+    "Update preserves the saved list byte for byte",
+    "Checked subtask remains under the saved parent",
+    "Saved appearance survives",
+    "Fresh release URL: app.js",
+    "Fresh release URL: model.js",
+    "Fresh release URL: field.js",
+    "Fresh release URL: engine-field.js",
+    "Fresh release URL: field-gpu.js",
+    "Fresh release URL: style.css",
+    "Release check bypasses cached manifest",
+    "Backup has a recognizable filename",
+    "Backup includes the complete tree and preferences",
+    "Downloading backup leaves stored data untouched",
+    "Backup has a recognizable filename",
+    "Example-mode backup contains the real saved list",
+    "Failed update check still opens the available app",
+    "Failed update check preserves data",
+    "Stale HTML after redirect cannot cause a reload loop",
+    "Reload-loop fallback preserves data",
+    "No JavaScript errors"
+  ],
+  "errors": []
+}

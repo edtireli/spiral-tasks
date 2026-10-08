@@ -13,6 +13,10 @@ A small, local task list built from the visual language of Spiral Chat and the S
 
 Tasks and appearance are saved in this browser’s `localStorage`, under `spiral-tasks:v1`. There is no account, backend, analytics, or external font request. Lists do not sync between devices, and clearing browser site data removes the saved list. Example mode is separate from saved tasks.
 
+Updates do not reset your list. Each published release has a separate asset directory, including all JavaScript imports and CSS. On opening the page, a small loader checks for a newer release without using the HTTP cache, then loads it on the same origin. It never clears or migrates `spiral-tasks:v1`, and never interrupts an already-open editing session. If the update check is unavailable, the available release still opens. Older release assets remain available for cached pages.
+
+Use **More options → Download backup** to save a JSON copy of your tasks and preferences. In example mode, this downloads your real saved list. Clearing browser **site data** removes entries; loading a new release or refreshing does not. Backups stay on your device.
+
 ## Run
 
 Requires Node.js for development checks and Python 3 for the local server. The published app has no runtime dependencies.
@@ -22,7 +26,7 @@ npm install
 npm start
 ```
 
-Open `http://127.0.0.1:8873/`. `npm run build` copies only application files into `docs/`, the GitHub Pages source. `npm test` checks tree invariants. `npm run test:browser` checks the interface with Playwright and an installed Chrome; set `CHROME_PATH` for another installation.
+Open `http://127.0.0.1:8873/`. `npm run build` publishes only application files into `docs/`, the GitHub Pages source, with a content-derived release ID. `npm test` checks tree invariants. `npm run test:updates` simulates cached releases, verifies data preservation and backup downloads, and covers update-check failures. `npm run test:browser` checks the interface with Playwright and an installed Chrome; set `CHROME_PATH` for another installation.
 
 ## Controls
 

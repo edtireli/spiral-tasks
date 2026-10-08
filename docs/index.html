@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#000000"><meta name="description" content="A quiet place for things to do. Branch, highlight, and reorder your tasks. Saved on this device.">
+  <meta name="app-build" content="a9d7a0c44306">
   <title>Spiral Tasks</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23000'/%3E%3Cpath d='M8 17l5 5L25 9' fill='none' stroke='%23efdc60' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./style.css">
-  <script type="module" src="./app.js"></script>
+  <link rel="stylesheet" href="./assets/a9d7a0c44306/style.css">
+  <script type="module" src="./assets/a9d7a0c44306/boot.js"></script>
 </head>
 <body>
   <canvas id="field" aria-hidden="true"></canvas>
-  <div class="shell">
+  <div class="shell" inert>
     <header class="topbar">
       <a class="brand" href="./" aria-label="Spiral Tasks home"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 16c-3-4 3-7 6-3 5 7-6 13-12 7C2 11 16 1 25 9c12 12-7 26-19 14"/></svg><span>spiral<span class="brand-divider">/</span>tasks</span></a>
       <div class="top-actions"><button id="appearance" class="icon-button" title="Appearance" aria-label="Appearance" aria-expanded="false"></button><button id="more" class="icon-button" title="More options" aria-label="More options" aria-expanded="false"></button></div>
@@ -19,7 +20,7 @@
       <div class="eyebrow"><span id="date"></span><span id="local-state">ON THIS DEVICE</span></div>
       <div class="title-line"><h1><span id="heading-text">Things to do</span><span class="title-dot">.</span></h1><span id="progress" aria-label="Progress"></span></div>
       <div id="example-bar" hidden><span>Example list</span><button id="leave-example">Use my own list</button></div>
-      <form id="add-form" autocomplete="off"><span class="add-symbol" aria-hidden="true">+</span><input id="new-task" maxlength="500" placeholder="What's on your mind?" aria-label="New task"><button class="add-submit" type="submit" aria-label="Add task" title="Add task"><span aria-hidden="true">↵</span></button></form>
+      <form id="add-form" autocomplete="off"><span class="add-symbol" aria-hidden="true">+</span><input id="new-task" disabled maxlength="500" placeholder="What's on your mind?" aria-label="New task"><button class="add-submit" disabled type="submit" aria-label="Add task" title="Add task"><span aria-hidden="true">↵</span></button></form>
       <div class="list-heading"><span>UP NEXT <span id="active-count"></span></span><button id="undo" class="quiet-button" title="Undo (⌘/Ctrl Z)" disabled>Undo</button></div>
       <div id="tasks" role="list" aria-label="Tasks"></div>
       <div id="empty" hidden><span class="empty-mark" aria-hidden="true">✓</span><p id="empty-label">A clear page.</p><button id="try-example" class="quiet-button">Try an example</button></div>
